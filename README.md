@@ -24,8 +24,10 @@ DatabaseManager is a kotlin plugin which could operate database by a fool
 }
 
 4, create database bean
+
 @DBA(table = "ves", isInherit = false)
 class Ves(@DBA(row = "s") var ss: String = "1d", @DBA(row = "sd", isColumn = false) var sss: String = "cd") {
+
     @DBA(row = "sdx", isColumn = true) var tt: String = "43"
     var dd = true
     var kk: String? = null
@@ -39,16 +41,23 @@ class Ves(@DBA(row = "s") var ss: String = "1d", @DBA(row = "sd", isColumn = fal
     var date = Date()
     var newDate = Date()
     var finll = HashMap<String, String>()
+    
 }
-note: "id" column is not admit, because this string is occupied by the manager
-DBA:table-> table name which manager create table used is class simple name by default, you could specify table name by this value
+
+note: 
+"id" column is not admit, because this string is occupied by the manager
+
+DBA:
+	table-> table name which manager create table used is class simple name by default, you could specify table name by this value
      row -> specify the column name, use the property name by default
      isColumn -> specify the property is or not a column in the table ,true is default
      isInherit -> specify the table is or not inherit from their parent, false is default
      primariKey -> default is false, every bean must specify a primary key
 
 5, create dao
+
 interface VesDao {
+
     @DBQuery(tableClazz = Ves::class, selectionArr = [Q(express = "i = ?")])
     fun queryAll(@Q(isArgArr = true)result: Array<String>? = null): io.reactivex.Observable<Array<Ves>>
 }
