@@ -275,6 +275,18 @@ class DBManager(context: Context, clazzArr: Array<KClass<*>>?, var jsonAdapter: 
                 if (method == null || dbInfo == null) {
                     return null
                 }
+                var annos = kclazz.annotations
+                if (annos != null && annos.isNotEmpty()) {
+                    annos.forEach { anno ->
+                        when (anno) {
+                            is DBQuery -> {
+                                if (anno.tableClazz != Any::class) {
+                                    return DBObservable(anno.tableClazz, method, args, dbHelper!!, jsonAdapter)
+                                }
+                            }
+                        }
+                    }
+                }
                 return DBObservable(method, args, dbHelper!!, jsonAdapter)
             }
         }) as T
@@ -444,14 +456,15 @@ class DBManager(context: Context, clazzArr: Array<KClass<*>>?, var jsonAdapter: 
                         var dotStr = ""
                         var objArr = arrayOfNulls<Any>(param.size)
                         var index = 0
-                        param.forEach { t, u ->
+
+                        param.entries.forEach {entry ->
                             if (index != 0) {
                                 keyStr += ","
                                 dotStr += ","
                             }
-                            keyStr += t
+                            keyStr += entry.key
                             dotStr += "?"
-                            objArr[index] = u
+                            objArr[index] = entry.value
                             index++
                         }
                         db.beginTransaction()

@@ -31,9 +31,29 @@ class MainActivity : AppCompatActivity() {
                         var observable = vesDao!!.queryAll(0)
                         observable.subscribeOn(Schedulers.io())
                             .observeOn(AndroidSchedulers.mainThread())
-                            .subscribe(DBObserver(1, object : DBCallback {
-                                override fun onResult(requestCode: Int, resultCode: String, msg: String?, dataArr: Any?) {
+                            .subscribe(DBObserver(1, object : DBQueryCallback {
+
+                                override fun onResult(
+                                    requestCode: Int,
+                                    resultCode: String,
+                                    msg: String?,
+                                    dataArr: Any?,
+                                    startId: Int,
+                                    endId: Int,
+                                    num: Int
+                                ) {
                                     println("$requestCode")
+                                    dataArr as Array<Any>
+//                                    manager.delete(0, dataArr[3], object : DBCallback {
+//                                        override fun onResult(
+//                                            requestCode: Int,
+//                                            resultCode: String,
+//                                            msg: String?,
+//                                            dataArr: Any?
+//                                        ) {
+//                                            println("$requestCode")
+//                                        }
+//                                    })
                                 }
                             }))
                     }
@@ -63,9 +83,9 @@ class IJsonAdapter: JsonAdapter {
 }
 
 
-
+@DBQuery(tableClazz = Ves::class)
 interface VesDao {
-    @DBQuery(tableClazz = Ves::class, selectionArr = [Q(express = "i = ?")])
+    @DBQuery(selectionArr = [Q(express = "i = ?")])
     fun queryAll(i: Int): io.reactivex.Observable<Array<Ves>>
 }
 

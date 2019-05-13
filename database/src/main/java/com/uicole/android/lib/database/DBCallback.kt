@@ -15,11 +15,23 @@ import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.kotlinFunction
 
 
+interface DBQueryCallback {
+    fun onResult(requestCode: Int, resultCode: String, msg: String?, dataArr: Any?, startId: Int = -1, endId: Int = -1, num: Int = 0)
+}
+
 interface DBCallback {
     fun onResult(requestCode: Int, resultCode: String, msg: String?, dataArr: Any?)
 }
 
 class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: DBHelper, var jsonAdapter: JsonAdapter): Observable<Any>() {
+
+    var rootClazz: KClass<*>? = null
+
+    constructor(rootClazz: KClass<*>, method: Method, args: Array<out Any>?, dbHelper: DBHelper, jsonAdapter: JsonAdapter)
+            : this(method, args, dbHelper, jsonAdapter) {
+        this.rootClazz = rootClazz
+    }
+
     override fun subscribeActual(observer: Observer<in Any>?) {
 
         var targetClazz: KClass<*>? = null
@@ -39,7 +51,9 @@ class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: 
             return
         }
         queryAnno as DBQuery
-        if (queryAnno.tableClazz != Any::class) {
+        if (rootClazz != Any::class) {
+            targetClazz = rootClazz
+        } else if (queryAnno.tableClazz != Any::class) {
             targetClazz = queryAnno.tableClazz
         }
         if (targetClazz == Any::class) {
@@ -136,35 +150,31 @@ class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: 
                 is Boolean -> argList.add("${if (arg) 1 else 0}")
             }
         }
-//        method.kotlinFunction?.valueParameters?.forEach {valueParameter ->
-//            var parameterAnnos = valueParameter.annotations
-//            parameterAnnos.forEach { annotation ->
-//                when (annotation) {
-//                    is Q -> {
-//                        if (annotation.isArgArr) {
-//                            var arg = args[valueParameter.index - 1]
-//                            if (arg is Array<*>) {
-//                                return arg as Array<String>
-//                            }
-//                            return null
-//                        }
-//                    }
-//                }
-//            }
-//        }
         return null
     }
 
 
-    private fun handleQueryCursorResult(kClazz: KClass<*>, tableInfo: DBTableInfo, cursor: Cursor?): Array<Any> {
+    private fun handleQueryCursorResult(kClazz: KClass<*>, tableInfo: DBTableInfo, cursor: Cursor?): Result {
+        var result = Result()
         if (cursor == null || cursor.count == 0) {
-            return emptyArray()
+            result.datas = emptyArray()
+            return result
         }
         var resultData = arrayOfNulls<Any>(cursor.count)
         var index = 0
         while (cursor.moveToNext()) {
             var instance = kClazz.createInstance()
-            kClazz.memberProperties.forEach property@ {property->
+
+            var idIndex = cursor.getColumnIndex("id")
+            var idValue = cursor.getInt(idIndex)
+            if (index == 0) {
+                result.startId = idValue
+                result.endId = idValue
+            } else {
+                result.endId = idValue
+            }
+
+            kClazz.memberProperties.forEach property@ {property ->
                 tableInfo.rows.forEach column@ {column ->
                     if (column.key != property.name) {
                         return@column
@@ -225,13 +235,15 @@ class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: 
             resultData[index] = instance
             index++
         }
-        return resultData as Array<Any>
+        result.datas = resultData as Array<Any>
+        result.num = resultData.size
+        return result
     }
 
 
 }
 
-class DBObserver(val requestCode: Int, val callback: DBCallback): Observer<Any> {
+class DBObserver(val requestCode: Int, val callback: DBQueryCallback): Observer<Any> {
     override fun onComplete() {
 
     }
@@ -240,12 +252,21 @@ class DBObserver(val requestCode: Int, val callback: DBCallback): Observer<Any> 
     }
 
     override fun onNext(value: Any?) {
-        callback.onResult(requestCode, DBResultCode.SUCCESS.code, null, value)
+        value?: return
+        value as Result
+        callback.onResult(requestCode, DBResultCode.SUCCESS.code, null, value.datas, value.startId, value.endId, value.num)
     }
 
     override fun onError(e: Throwable?) {
         callback.onResult(requestCode, DBResultCode.ERROR.code, e?.message, null)
     }
+}
+
+class Result {
+    var datas: Array<Any>? = null
+    var startId: Int = -1
+    var endId: Int = -1
+    var num: Int = 0
 }
 
 enum class DBResultCode(val code: String) {
