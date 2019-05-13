@@ -1,5 +1,5 @@
 # database
-DatabaseManager is a kotlin plugin which could operate database by a fool
+DatabaseManager is a kotlin plugin which could operate database, such like create table, add, update ,query,and delete by a fool
 
 1,how to integrate the manager into your project
    open module build.gradle, add the dependency below->
@@ -48,10 +48,15 @@ note:
 "id" column is not admit, because this string is occupied by the manager
 
 DBA:
-	table-> table name which manager create table used is class simple name by default, you could specify table name by this value
+
+     table-> table name which manager create table used is class simple name by default, you could specify table name by this value
+	
      row -> specify the column name, use the property name by default
+     
      isColumn -> specify the property is or not a column in the table ,true is default
+     
      isInherit -> specify the table is or not inherit from their parent, false is default
+     
      primariKey -> default is false, every bean must specify a primary key
 
 5, create dao
