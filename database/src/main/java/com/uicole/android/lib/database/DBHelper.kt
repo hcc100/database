@@ -159,7 +159,6 @@ class DBHelper(context: Context, var dbInfo: DBInfo, var tableInfos: List<DBTabl
 
 interface OnDatabaseUpdateListener {
     fun onTableUpdateSusscess()
-    fun onDatabaseInitSuccess()
     fun onDBtabaseInitError(e: Exception)
 
 }

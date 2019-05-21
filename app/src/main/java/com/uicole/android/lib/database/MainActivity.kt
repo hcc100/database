@@ -15,20 +15,18 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        manager = DBManager(this, arrayOf(Ves::class), IJsonAdapter(), null, object : DBManager.OnInitDatabaseLisener {
-            override fun onError(e: Exception) {
-            }
+        manager = DBManager(this, arrayOf(Ves::class), IJsonAdapter(), null, object : DBManager.OnInitDatabaseCallback {
 
             override fun onInitSuccess() {
                 var vesss = Ves()
-                vesss.finll["hs"] = "sfdf"
+                vesss.finll["hs"] = "sdssdd"
                 vesss.finll["hsa"] = "sfdfsd"
 
                 vesss.vesss.add(Ve())
                 manager.add(100, vesss, object : DBCallback {
                     override fun onResult(requestCode: Int, resultCode: String, msg: String?, dataArr: Any?) {
                         var vesDao = manager.create(VesDao::class.java)
-                        var observable = vesDao!!.queryAll(0)
+                        var observable = vesDao!!.queryAll(Date(1558278395016))
                         observable.subscribeOn(Schedulers.io())
                             .observeOn(AndroidSchedulers.mainThread())
                             .subscribe(DBObserver(1, object : DBQueryCallback {
@@ -58,9 +56,11 @@ class MainActivity : AppCompatActivity() {
                             }))
                     }
                 })
-
-
             }
+
+            override fun onError(e: Throwable?) {
+            }
+
         })
     }
 }
@@ -85,8 +85,8 @@ class IJsonAdapter: JsonAdapter {
 
 @DBQuery(tableClazz = Ves::class)
 interface VesDao {
-    @DBQuery(selectionArr = [Q(express = "i = ?")])
-    fun queryAll(i: Int): io.reactivex.Observable<Array<Ves>>
+    @DBQuery(selectionArr = [Q(express = "date >= ?")])
+    fun queryAll(date: Date): io.reactivex.Observable<Array<Ves>>
 }
 
 @DBA(table = "ves", isInherit = false)

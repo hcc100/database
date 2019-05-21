@@ -7,6 +7,7 @@ import java.lang.reflect.Method
 import kotlin.reflect.KClass
 import android.database.Cursor
 import com.uicole.android.lib.database.adapter.JsonAdapter
+import java.util.*
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.valueParameters
@@ -20,7 +21,7 @@ interface DBQueryCallback {
 }
 
 interface DBCallback {
-    fun onResult(requestCode: Int, resultCode: String, msg: String?, dataArr: Any?)
+    fun onResult(requestCode: Int, resultCode: String, msg: String? = null, dataArr: Any? = null)
 }
 
 class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: DBHelper, var jsonAdapter: JsonAdapter): Observable<Any>() {
@@ -148,9 +149,11 @@ class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: 
                 is Int, is Float, is Double, is Long, is Byte, is Short, is Char -> argList.add("$arg")
                 is String -> argList.add(arg)
                 is Boolean -> argList.add("${if (arg) 1 else 0}")
+                is Date -> argList.add(arg.time.toString())
+                else -> argList.add(jsonAdapter.toJSONStr(arg))
             }
         }
-        return null
+        return argList.toArray(arrayOfNulls(argList.size))
     }
 
 
@@ -213,12 +216,20 @@ class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: 
                                 property.javaField?.set(instance, result)
                             }
                         }
+                        "date" -> {
+                            var result = value.toLongOrNull()
+                            if (result != null) {
+                                var date = Date(result)
+                                property.javaField?.set(instance, date)
+                            }
+                        }
                         "boolean" -> {
                             var result: Int? = value.toIntOrNull()
                             if (result != null) {
                                 property.javaField?.set(instance, (result == 1))
                             }
                         }
+
                         "ntext" -> {
                             var propertyType = property.javaField?.type
                             if (propertyType!!.name == "java.lang.String") {
@@ -235,6 +246,7 @@ class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: 
             resultData[index] = instance
             index++
         }
+        cursor.close()
         result.datas = resultData as Array<Any>
         result.num = resultData.size
         return result
@@ -248,16 +260,15 @@ class DBObserver(val requestCode: Int, val callback: DBQueryCallback): Observer<
 
     }
 
-    override fun onSubscribe(d: Disposable?) {
+    override fun onSubscribe(d: Disposable) {
     }
 
-    override fun onNext(value: Any?) {
-        value?: return
+    override fun onNext(value: Any) {
         value as Result
         callback.onResult(requestCode, DBResultCode.SUCCESS.code, null, value.datas, value.startId, value.endId, value.num)
     }
 
-    override fun onError(e: Throwable?) {
+    override fun onError(e: Throwable) {
         callback.onResult(requestCode, DBResultCode.ERROR.code, e?.message, null)
     }
 }

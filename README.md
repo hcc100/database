@@ -1,5 +1,5 @@
 # database
-DatabaseManager is a kotlin plugin which could operate database, such like create table, add, update ,query,and delete by a fool
+DatabaseManager is a kotlin plugin which could operate database, such as create table, add, update ,query,and delete by a fool
 
 1,how to integrate the manager into your project
    open module build.gradle, add the dependency below->
@@ -63,10 +63,13 @@ DBA:
 
 5, create dao
 
+@DBQuery(tableClazz = Ves::class)
+
 interface VesDao {
 
-    @DBQuery(tableClazz = Ves::class, selectionArr = [Q(express = "i = ?")])
-    fun queryAll(@Q(isArgArr = true)result: Array<String>? = null): io.reactivex.Observable<Array<Ves>>
+    @DBQuery(selectionArr = [Q(express = "date <= ?")])
+    fun queryAll(date: Date): io.reactivex.Observable<Array<Ves>>
+
 }
 
 
