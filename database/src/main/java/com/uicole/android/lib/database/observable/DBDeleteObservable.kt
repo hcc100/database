@@ -73,10 +73,10 @@ class DBDeleteObservable(var requestCode: Int, var any: Any, var jsonAdapter: Js
                 db.execSQL(sqlStr)
                 db.setTransactionSuccessful()
                 db.endTransaction()
+                observer?.onNext(requestCode)
                 return@main
             }
         }
-        observer?.onNext(requestCode)
         observer?.onComplete()
 
 

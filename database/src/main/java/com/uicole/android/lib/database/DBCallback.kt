@@ -21,7 +21,7 @@ interface DBQueryCallback {
 }
 
 interface DBCallback {
-    fun onResult(requestCode: Int, resultCode: String, msg: String? = null, dataArr: Any? = null)
+    fun onResult(primary: Any?, resultCode: String, msg: String? = null, dataArr: Any? = null)
 }
 
 class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: DBHelper, var jsonAdapter: JsonAdapter): Observable<Any>() {
@@ -282,5 +282,5 @@ class Result {
 
 enum class DBResultCode(val code: String) {
     INIT("-1"), SUCCESS("00"), ERROR("01"), ERROR_CLASS_NAME("02"), ERROR_INSERT_DATA_EMPTY("03")
-    , ERROR_NO_APPROPRIATE_TABLE("04")
+    , ERROR_NO_APPROPRIATE_TABLE("04"), STEP_SUCCESS("05")
 }

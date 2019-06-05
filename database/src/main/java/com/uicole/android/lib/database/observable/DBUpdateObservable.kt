@@ -77,6 +77,7 @@ class DBUpdateObservable(var requestCode: Int, var any: Any, var jsonAdapter: Js
                 db.execSQL(sqlStr + whereStr)
                 db.setTransactionSuccessful()
                 db.endTransaction()
+                observer?.onNext(requestCode)
                 return@main
             }
         }

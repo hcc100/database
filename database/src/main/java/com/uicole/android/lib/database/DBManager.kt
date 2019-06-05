@@ -4,20 +4,19 @@ import android.content.Context
 import android.os.Handler
 import android.os.Message
 import com.uicole.android.lib.database.adapter.JsonAdapter
-import com.uicole.android.lib.database.observable.DBAddObservable
-import com.uicole.android.lib.database.observable.DBDeleteObservable
-import com.uicole.android.lib.database.observable.DBInitObservable
-import com.uicole.android.lib.database.observable.DBUpdateObservable
+import com.uicole.android.lib.database.observable.*
 import com.uicole.android.lib.database.observer.DBInitObserver
 import com.uicole.android.lib.database.observer.DBUpdateObserver
 import com.uicole.android.lib.database.utils.FileUtils
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.functions.Action
 import io.reactivex.schedulers.Schedulers
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
+import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Proxy
 import java.util.*
 import java.util.concurrent.ExecutorService
@@ -75,21 +74,6 @@ class DBManager(context: Context, clazzArr: Array<KClass<*>>?, var jsonAdapter: 
     }
 
     /**
-     * delete object from table
-     * any.property must annotate:primary key
-     */
-    fun delete(requestCode: Int, any: Any, callback: DBCallback?) {
-        DBDeleteObservable(requestCode, any, jsonAdapter, tables, dbHelper!!)
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({t ->
-                callback?.onResult(t, DBResultCode.SUCCESS.code)
-            }, {e ->
-                callback?.onResult(requestCode, DBResultCode.ERROR.code, e.message)
-            })
-    }
-
-    /**
      * update object in the table
      * any.property must annotate:primary key
      */
@@ -98,9 +82,11 @@ class DBManager(context: Context, clazzArr: Array<KClass<*>>?, var jsonAdapter: 
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({t ->
-                callback?.onResult(t, DBResultCode.SUCCESS.code)
+                callback?.onResult(t, DBResultCode.STEP_SUCCESS.code)
             }, {e ->
                 callback?.onResult(requestCode, DBResultCode.ERROR.code, e.message)
+            }, {
+                callback?.onResult(requestCode, DBResultCode.SUCCESS.code)
             })
     }
 
@@ -127,8 +113,8 @@ class DBManager(context: Context, clazzArr: Array<KClass<*>>?, var jsonAdapter: 
         }) as T
     }
 
-    fun add(requestCode: Int, any: Any) {
-        add(requestCode, any, null)
+    fun add(any: Any, requestCode: Int = 0) {
+        add(any, null, requestCode)
     }
 
     /**
@@ -136,20 +122,59 @@ class DBManager(context: Context, clazzArr: Array<KClass<*>>?, var jsonAdapter: 
      * requestCode request code user defined
      * any object
      */
-    fun add(requestCode: Int, any: Any, callback: DBCallback?) {
-        DBAddObservable(requestCode, any, jsonAdapter, tables, dbHelper!!)
+    fun add(any: Any, callback: DBCallback? = null, requestCode: Int = 0) {
+        when (any) {
+            is List<*>, is Set<*>, is Array<*> -> {
+                addAll(any, callback, requestCode)
+            }
+            else -> {
+                addAll(arrayOf(any), callback, requestCode)
+            }
+        }
+    }
+    fun  addAll(any: Any, callback: DBCallback? = null, requestCode: Int = 0) {
+        DBAddBatchObservable(requestCode, any, jsonAdapter, tables, dbHelper!!)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({t ->
-                callback?.onResult(t, DBResultCode.SUCCESS.code)
+                callback?.onResult(t, DBResultCode.STEP_SUCCESS.code)
             }, {e ->
                 callback?.onResult(requestCode, DBResultCode.ERROR.code, e.message)
+            }, {
+                callback?.onResult(requestCode, DBResultCode.SUCCESS.code)
             })
     }
 
+    /**
+     * delete object from table
+     * any.property must annotate:primary key
+     */
+    fun delete(any: Any, requestCode: Int = 0) {
+        delete(any, null, requestCode)
+    }
 
-    class DBResult(var requestCode: Int, var resultCode: String, var msg: String?, var data: Any?, var callback: DBCallback?)
-
+    fun delete(any: Any, callback: DBCallback? = null, requestCode: Int = 0) {
+        when (any) {
+            is List<*>, is Set<*>, is Array<*> -> {
+                deleteAll(any, callback, requestCode)
+            }
+            else -> {
+                deleteAll(arrayOf(any), callback, requestCode)
+            }
+        }
+    }
+    fun  deleteAll(any: Any, callback: DBCallback? = null, requestCode: Int = 0) {
+        DBDeleteBatchObservable(requestCode, any, jsonAdapter, tables, dbHelper!!)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({t ->
+                callback?.onResult(t, DBResultCode.STEP_SUCCESS.code)
+            }, {e ->
+                callback?.onResult(requestCode, DBResultCode.ERROR.code, e.message)
+            }, {
+                callback?.onResult(requestCode, DBResultCode.SUCCESS.code)
+            })
+    }
 
 
     class DatabaseNotInitException: Exception("database is not init complete")

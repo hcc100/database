@@ -7,13 +7,16 @@ import io.reactivex.Observer
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.reflect.full.memberProperties
 
 class DBAddObservable(var requestCode: Int, var any: Any, var jsonAdapter: JsonAdapter, var tables: ArrayList<DBTableInfo>, var dbHelper: DBHelper): Observable<Int>() {
 
+
     override fun subscribeActual(observer: Observer<in Int>?) {
 
         var clazzName = any::class.qualifiedName
+
         if (clazzName == null) {
             observer?.onError(DBManager.ClassQualifiedNameException())
             return
