@@ -3,7 +3,7 @@ package com.uicole.android.lib.database
 import kotlin.reflect.KClass
 
 enum class QueryAction {
-    QUERY, DELETE
+    QUERY, DELETE, UPDATE
 }
 
 @Target(AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)

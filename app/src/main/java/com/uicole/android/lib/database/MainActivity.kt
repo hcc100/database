@@ -1,5 +1,6 @@
 package com.uicole.android.lib.database
 
+import android.content.ContentValues
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import com.alibaba.fastjson.JSON
@@ -31,35 +32,69 @@ class MainActivity : AppCompatActivity() {
                         if (resultCode == DBResultCode.STEP_SUCCESS.code) {
                         } else {
                             var vesDao = manager.create(VesDao::class.java)
-                            var observable = vesDao!!.query()
-                            observable.subscribeOn(Schedulers.io())
-                                .observeOn(AndroidSchedulers.mainThread())
-                                .subscribe(DBObserver(1, object : DBQueryCallback {
 
+
+                            var contentValues = ContentValues()
+                            contentValues.put("j", 5)
+                            var updateObservable = vesDao!!.updateTt(contentValues, 2)
+                            updateObservable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                                .subscribe(DBObserver(object: DBUpdateCallback {
                                     override fun onResult(
-                                        requestCode: Int,
                                         resultCode: String,
                                         msg: String?,
-                                        dataArr: Any?,
-                                        startId: Int,
-                                        endId: Int,
-                                        num: Int
+                                        requestCode: Int
                                     ) {
-                                        println("$requestCode")
-                                        dataArr as Array<Any>
-                                        (dataArr[0] as Ves).tt = "40"
-                                        manager.delete(arrayListOf(vesss1, vesss2), object : DBCallback {
-                                            override fun onResult(
-                                                primary: Any?,
-                                                resultCode: String,
-                                                msg: String?,
-                                                dataArr: Any?
-                                            ) {
-                                                println(primary)
-                                            }
-                                        })
+                                        println(requestCode)
+
+                                        var observable = vesDao!!.query()
+                                        observable.subscribeOn(Schedulers.io())
+                                            .observeOn(AndroidSchedulers.mainThread())
+                                            .subscribe(DBObserver(object : DBQueryCallback {
+
+                                                override fun onResult(
+                                                    resultCode: String,
+                                                    msg: String?,
+                                                    dataArr: Any?,
+                                                    requestCode: Int,
+                                                    startId: Int,
+                                                    endId: Int,
+                                                    num: Int
+                                                ) {
+                                                    println("$requestCode")
+                                                    dataArr as Array<Any>
+
+                                                    var delObservable = vesDao.deleTt("2")
+                                                    delObservable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                                                        .subscribe(DBObserver(object : DBUpdateCallback {
+                                                            override fun onResult(
+                                                                resultCode: String,
+                                                                msg: String?,
+                                                                requestCode: Int
+                                                            ) {
+                                                                println(requestCode)
+                                                            }
+                                                    }))
+//                                        (dataArr[0] as Ves).tt = "40"
+//                                        manager.delete(arrayListOf(vesss1, vesss2), object : DBCallback {
+//                                            override fun onResult(
+//                                                primary: Any?,
+//                                                resultCode: String,
+//                                                msg: String?,
+//                                                dataArr: Any?
+//                                            ) {
+//                                                println(primary)
+//                                            }
+//                                        })
+                                                }
+                                            }))
+
+
                                     }
-                                }))
+                                }, 2))
+
+
+
+
                         }
                     }
                 }, 100)
@@ -104,6 +139,10 @@ interface VesDao {
     fun queryAll(date: Date): io.reactivex.Observable<Array<Ves>>
     @DBQuery(selectionArr = [Q(express = "i = ?")])
     fun queryTt(tt: String): io.reactivex.Observable<Array<Ves>>
+    @DBQuery(action = QueryAction.DELETE, selectionArr = [Q(express = "i = ?")])
+    fun deleTt(tt: String): io.reactivex.Observable<Array<Ves>>
+    @DBQuery(action = QueryAction.UPDATE, selectionArr = [Q(express = "i = ?")])
+    fun updateTt(updateValue: ContentValues, tt: Int): io.reactivex.Observable<Array<Ves>>
 }
 
 @DBA(table = "ves", isInherit = false)

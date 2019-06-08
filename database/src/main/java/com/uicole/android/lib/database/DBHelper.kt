@@ -113,7 +113,7 @@ class DBHelper(context: Context, var dbInfo: DBInfo, var tableInfos: List<DBTabl
      */
     fun createSql(tableInfo: DBTableInfo): String? {
         if (tableInfo.rows.isNotEmpty()) {
-            var sql = "create table if not exists ${tableInfo.tableName} (id integer primary key autoincrement"
+            var sql = "create table if not exists ${tableInfo.tableName} (_id integer primary key autoincrement"
             tableInfo.rows.forEach { row ->
                 sql += ", ${if (row.value.isBlank()) row.key else row.value} ${if (row.type == "ntext") row.type else "varchar"}"
             }

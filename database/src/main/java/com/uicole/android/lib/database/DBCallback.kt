@@ -1,5 +1,6 @@
 package com.uicole.android.lib.database
 
+import android.content.ContentValues
 import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.disposables.Disposable
@@ -15,9 +16,14 @@ import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.kotlinFunction
 
+interface DBproxyCallback
 
-interface DBQueryCallback {
-    fun onResult(requestCode: Int, resultCode: String, msg: String?, dataArr: Any?, startId: Int = -1, endId: Int = -1, num: Int = 0)
+interface DBQueryCallback: DBproxyCallback {
+    fun onResult(resultCode: String, msg: String? = null, dataArr: Any? = null, requestCode: Int, startId: Int = -1, endId: Int = -1, num: Int = 0)
+}
+
+interface DBUpdateCallback: DBproxyCallback {
+    fun onResult(resultCode: String, msg: String? = null, requestCode: Int)
 }
 
 interface DBCallback {
@@ -115,11 +121,25 @@ class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: 
         }
         var resultSeletionList = selectionList.toArray(arrayOfNulls<Q>(selectionList.size)) as Array<Q>?
         var resultArgList = argList.toArray(arrayOfNulls<String>(argList.size)) as Array<String>?
+        var querySelection = if (selections.isNullOrBlank()) createSeletions(resultSeletionList, resultArgList) else selections
 
-        var cursor = dbHelper.readableDatabase.query(true, tableInfo.tableName, null
-                , if (selections.isNullOrBlank()) createSeletions(resultSeletionList, resultArgList) else selections, resultArgList
-                , null, null, orderBy, limit.toString())
-        observer?.onNext(handleQueryCursorResult(targetClazz, tableInfo, cursor))
+        when (queryAnno.action) {
+            QueryAction.QUERY -> {
+                var cursor = dbHelper.readableDatabase.query(true, tableInfo.tableName, null
+                    , querySelection, resultArgList, null, null, orderBy, limit.toString())
+                observer?.onNext(handleQueryCursorResult(targetClazz, tableInfo, cursor))
+            }
+            QueryAction.DELETE -> {
+                dbHelper.writableDatabase.delete(tableInfo.tableName, querySelection, resultArgList)
+                observer?.onNext(Result())
+            }
+            QueryAction.UPDATE -> {
+                var contentValues = getUpdateValues(args)
+                dbHelper.writableDatabase.update(tableInfo.tableName, contentValues, querySelection, resultArgList)
+                observer?.onNext(Result())
+            }
+        }
+
         observer?.onComplete()
     }
 
@@ -139,6 +159,40 @@ class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: 
         return selections
     }
 
+    private fun getUpdateValues(args: Array<out Any>?): ContentValues? {
+        if (args == null || args.isEmpty()) {
+            return null
+        }
+        var contentValues: ContentValues? = null
+        run getContentValues@{
+            args.forEach { arg ->
+                contentValues = when (arg) {
+                    is ContentValues -> arg
+                    else -> null
+                }
+                if (contentValues != null) {
+                    return@getContentValues
+                }
+            }
+        }
+        if (contentValues != null) {
+            contentValues?.keySet()?.forEach { key ->
+                var value = contentValues?.get(key)
+                var valueStr = when (value) {
+                    is Int, is Float, is Double, is Long, is Byte, is Short, is Char -> "$value"
+                    is String -> value
+                    is Boolean -> "${if (value) 1 else 0}"
+                    is Date -> value.time.toString()
+                    null -> ""
+                    else -> jsonAdapter.toJSONStr(value)
+                }
+                contentValues?.put(key, valueStr)
+            }
+            return contentValues
+        }
+        return null
+    }
+
     private fun getQueryArgArray(args: Array<out Any>?, method: Method): Array<String>? {
         if (args == null || args.isEmpty()) {
             return null
@@ -150,6 +204,7 @@ class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: 
                 is String -> argList.add(arg)
                 is Boolean -> argList.add("${if (arg) 1 else 0}")
                 is Date -> argList.add(arg.time.toString())
+                is ContentValues -> {}
                 else -> argList.add(jsonAdapter.toJSONStr(arg))
             }
         }
@@ -255,7 +310,7 @@ class DBObservable(var method: Method, var args: Array<out Any>?, var dbHelper: 
 
 }
 
-class DBObserver(val requestCode: Int, val callback: DBQueryCallback): Observer<Any> {
+class DBObserver(val callback: DBproxyCallback?, val requestCode: Int = 0): Observer<Any> {
     override fun onComplete() {
 
     }
@@ -264,12 +319,23 @@ class DBObserver(val requestCode: Int, val callback: DBQueryCallback): Observer<
     }
 
     override fun onNext(value: Any) {
-        value as Result
-        callback.onResult(requestCode, DBResultCode.SUCCESS.code, null, value.datas, value.startId, value.endId, value.num)
+        callback?: return
+        when (callback) {
+            is DBQueryCallback -> {
+                value as Result
+                callback.onResult(DBResultCode.SUCCESS.code, null, value.datas, value.startId, value.endId, value.num, requestCode)
+            }
+            is DBUpdateCallback -> callback.onResult(DBResultCode.SUCCESS.code, null, requestCode)
+        }
+
     }
 
     override fun onError(e: Throwable) {
-        callback.onResult(requestCode, DBResultCode.ERROR.code, e?.message, null)
+        when (callback) {
+            is DBQueryCallback -> callback.onResult(DBResultCode.ERROR.code, e.message, null, requestCode)
+            is DBUpdateCallback -> callback.onResult(DBResultCode.ERROR.code, e.message, requestCode)
+        }
+
     }
 }
 
