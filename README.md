@@ -48,7 +48,7 @@ class Ves(@DBA(row = "s") var ss: String = "1d", @DBA(row = "sd", isColumn = fal
 }
 
 note: 
-"id" column is not admit, because this string is occupied by the manager
+"_id" column is not admit, because this string is occupied by the manager
 
 DBA:
 
