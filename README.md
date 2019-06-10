@@ -4,7 +4,8 @@ DatabaseManager is a kotlin plugin which could operate database, such as create 
 1,how to integrate the manager into your project
    open module build.gradle, add the dependency below->
    
-	implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
+    	implementation 'com.uicole.lib:fool-database-manager:1.0.0'
+	#implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
 	implementation "io.reactivex.rxjava2:rxjava:$rx_java2_version"
 
 2,add the jar into your dependency
